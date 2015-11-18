@@ -641,7 +641,8 @@ free_block(uint32_t blockno)
 static int32_t
 indir2_index(uint32_t b)
 {
-	// Your code here.
+	if (b >= OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return 0;
 	return -1;
 }
 
@@ -660,8 +661,14 @@ indir2_index(uint32_t b)
 static int32_t
 indir_index(uint32_t b)
 {
-	// Your code here.
-	return -1;
+	if (b < OSPFS_NDIRECT)
+		return -1;
+	else if (b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return 0;
+	else {
+		b -= OSPFS_NDIRECT + OSPFS_NINDIRECT;
+		return b / OSPFS_NINDIRECT;
+	}
 }
 
 
@@ -677,8 +684,12 @@ indir_index(uint32_t b)
 static int32_t
 direct_index(uint32_t b)
 {
-	// Your code here.
-	return -1;
+	if (b < OSPFS_NDIRECT)
+		return b;
+	else {
+		b -= OSPFS_NDIRECT;
+		return b % OSPFS_NINDIRECT;
+	}
 }
 
 
@@ -879,6 +890,8 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 	// Make sure we don't read past the end of the file!
 	// Change 'count' so we never read past the end of the file.
 	/* EXERCISE: Your code here */
+	if (count > oi->oi_size-*f_pos)
+		count = oi->oi_size-*f_pos;
 
 	// Copy the data to user block by block
 	while (amount < count && retval >= 0) {
@@ -899,8 +912,15 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
-		retval = -EIO; // Replace these lines
-		goto done;
+		n = count - amount;
+		uint32_t offset = *f_pos % OSPFS_BLKSIZE;
+		uint32_t bytesRemaining = OSPFS_BLKSIZE - offset;
+		if (n > bytesRemaining)
+			n = bytesRemaining;
+		if (copy_to_user(buffer, &data[offset], n)) {
+			retval = -EFAULT;
+			goto done;
+		}
 
 		buffer += n;
 		amount += n;
