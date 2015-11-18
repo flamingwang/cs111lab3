@@ -1232,21 +1232,6 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 }
 
-
-static uint32_t find_free_inode(){
-  //Used to find a free inode for above create function
-  //Returns the inode iterator
-  int jj;
-
-  for(jj = ospfs_super->os_firstinob; jj < ospfs_super->os_ninodes; jj++){
-    ospfs_inode_t* oi = ospfs_inode(jj);
-    if(oi->oi_nlink == 0){
-      return jj; // inode found
-    }
-  }
-  return 0; // no inode found
-}
-
 // ospfs_symlink(dirino, dentry, symname)
 //   Linux calls this function to create a symbolic link.
 //   It is the ospfs_dir_inode_ops.symlink callback.
