@@ -1116,7 +1116,75 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 0;
 	/* EXERCISE: Your code here. */
-	return -EINVAL; // Replace this line
+	
+	
+	//OUR CODE
+	//provided with 
+	//dir_oi
+	//entry_ino 
+	//already
+	//ospfs_inode() is a provided function
+	uint32_t bloc_ino = 0;
+	ospfs_direntry_t* new_entry = NULL;
+	ospfs_inode_t* file_oi = NULL;
+	
+	//Name too large
+	if(dentry->d_name.len > OSPFS_MAXNAMELEN){
+	  return -ENAMETOOLONG;
+	}
+	
+	//File already exists in given dir
+	if(find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len)){
+	  return -EEXIST;
+	}
+	
+	//need empty directory entry AND empty inode 
+	
+	// (find a free directory)
+	new_entry = create_blank_direntry(dir_oi);
+	if(IS_ERR(new_entry)){
+	  return PTR_ERR(new_entry);
+	}
+	
+	// (find a free inode)
+	entry_ino = find_free_inode();
+	if(entry_ino == 0){
+	  return -ENOSPC;
+	}
+	
+	file_oi = ospfs_inode(entry_ino);
+	if(file_oi == NULL){
+	  //would have segfaulted in find_free_inode() already 
+	  return PTR_ERR(file_oi);
+	}
+	
+	//Initialize inode
+	file_oi->oi_size = 0;
+	file_oi->oi_ftype = OSPFS_FTYPE_REG;
+	file_oi->oi_nlink = 1;
+	file_oi->oi_mode = mode;
+	file_oi->oi_indirect = 0;
+	file_oi->oi_indirect2 = 0;
+	//initialize directs 
+	int jj;
+	for(jj = 0; jj < OSPFS_NDIRECT; jj++){
+	  file_oi->oi_direct[jj] = 0;
+	}
+	
+	//Initialize directory fields
+	new_entry->od_ino = entry_ino;
+	
+	//copy over the name
+	memcpy(new_entry->od_name, dentry->d_name.name, dentry->d_name.len);
+	
+	//last character as the zero byte
+	new_entry->od_name[d_name.len] = 0;
+	
+	// END OF OUR CODE
+	
+	
+	
+	//return -EINVAL; // Replace this line
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
@@ -1130,6 +1198,20 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 }
 
+
+static uint32_t find_free_inode(){
+  //Used to find a free inode for above create function
+  //Returns the inode iterator
+  int jj;
+
+  for(jj = ospfs_super->os_firstinob; jj < ospfs_super->os_ninodes; jj++){
+    ospfs_inode_t* oi = ospfs_inode(jj);
+    if(oi->oi_nlink == 0){
+      return jj; // inode found
+    }
+  }
+  return 0; // no inode found
+}
 
 // ospfs_symlink(dirino, dentry, symname)
 //   Linux calls this function to create a symbolic link.
