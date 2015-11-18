@@ -465,11 +465,10 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 
 			
 		}
-		if (ok_so_far >= 0) {
+		if (ok_so_far >= 0)
 			f_pos += OSPFS_DIRENTRY_SIZE;
 		else
 			return 0;
-		}
 		/* If at the end of the directory, set 'r' to 1 and exit
 		 * the loop.  For now we do this all the time.
 		 *
@@ -575,7 +574,7 @@ static uint32_t
 allocate_block(void)
 {
 	/* EXERCISE: Your code here */
-	void* bm = ofps_block(OSPFS_FREEMAP_BLK);
+	void* bm = ospfs_block(OSPFS_FREEMAP_BLK);
 	int i;
 	for (i = 1; i < ospfs_super->os_nblocks; i++) {
 		if (bitvector_test(bm, i) == 1) {
@@ -602,8 +601,8 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
-	if (blockno > ofps_super->os_firstinob) {
-		void* bm = ofps_block(OSPFS_FREEMAP_BLK);
+	if (blockno > ospfs_super->os_firstinob) {
+		void* bm = ospfs_block(OSPFS_FREEMAP_BLK);
 		bitvector_set(bm, blockno);
 	}
 
