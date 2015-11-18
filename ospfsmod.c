@@ -465,10 +465,11 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 
 			
 		}
-		if (ok_so_far >= 0)
+		if (ok_so_far >= 0) {
 			f_pos += OSPFS_DIRENTRY_SIZE;
 		else
 			return 0;
+		}
 		/* If at the end of the directory, set 'r' to 1 and exit
 		 * the loop.  For now we do this all the time.
 		 *
@@ -574,7 +575,7 @@ static uint32_t
 allocate_block(void)
 {
 	/* EXERCISE: Your code here */
-	void* bm = ospfs_block(OSPFS_FREEMAP_BLK);
+	void* bm = ofps_block(OSPFS_FREEMAP_BLK);
 	int i;
 	for (i = 1; i < ospfs_super->os_nblocks; i++) {
 		if (bitvector_test(bm, i) == 1) {
@@ -601,8 +602,8 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
-	if (blockno > ospfs_super->os_firstinob) {
-		void* bm = ospfs_block(OSPFS_FREEMAP_BLK);
+	if (blockno > ofps_super->os_firstinob) {
+		void* bm = ofps_block(OSPFS_FREEMAP_BLK);
 		bitvector_set(bm, blockno);
 	}
 
@@ -641,8 +642,7 @@ free_block(uint32_t blockno)
 static int32_t
 indir2_index(uint32_t b)
 {
-	if (b >= OSPFS_NDIRECT + OSPFS_NINDIRECT)
-		return 0;
+	// Your code here.
 	return -1;
 }
 
@@ -661,14 +661,8 @@ indir2_index(uint32_t b)
 static int32_t
 indir_index(uint32_t b)
 {
-	if (b < OSPFS_NDIRECT)
-		return -1;
-	else if (b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
-		return 0;
-	else {
-		b -= OSPFS_NDIRECT + OSPFS_NINDIRECT;
-		return b / OSPFS_NINDIRECT;
-	}
+	// Your code here.
+	return -1;
 }
 
 
@@ -684,12 +678,8 @@ indir_index(uint32_t b)
 static int32_t
 direct_index(uint32_t b)
 {
-	if (b < OSPFS_NDIRECT)
-		return b;
-	else {
-		b -= OSPFS_NDIRECT;
-		return b % OSPFS_NINDIRECT;
-	}
+	// Your code here.
+	return -1;
 }
 
 
@@ -890,8 +880,6 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 	// Make sure we don't read past the end of the file!
 	// Change 'count' so we never read past the end of the file.
 	/* EXERCISE: Your code here */
-	if (count > oi->oi_size-*f_pos)
-		count = oi->oi_size-*f_pos;
 
 	// Copy the data to user block by block
 	while (amount < count && retval >= 0) {
@@ -912,15 +900,8 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
-		n = count - amount;
-		uint32_t offset = *f_pos % OSPFS_BLKSIZE;
-		uint32_t bytesRemaining = OSPFS_BLKSIZE - offset;
-		if (n > bytesRemaining)
-			n = bytesRemaining;
-		if (copy_to_user(buffer, &data[offset], n)) {
-			retval = -EFAULT;
-			goto done;
-		}
+		retval = -EIO; // Replace these lines
+		goto done;
 
 		buffer += n;
 		amount += n;
@@ -1129,6 +1110,22 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 //
 //   EXERCISE: Complete this function.
 
+
+static uint32_t 
+find_free_inode(){
+  //Used to find a free inode for above create function
+  //Returns the inode iterator
+  int jj;
+
+  for(jj = ospfs_super->os_firstinob; jj < ospfs_super->os_ninodes; jj++){
+    ospfs_inode_t* oi = ospfs_inode(jj);
+    if(oi->oi_nlink == 0){
+      return jj; // inode found
+    }
+  }
+  return 0; // no inode found
+}
+
 static int
 ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
 {
@@ -1143,9 +1140,10 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	//entry_ino 
 	//already
 	//ospfs_inode() is a provided function
-	uint32_t bloc_ino = 0;
+	//uint32_t bloc_ino = 0;
 	ospfs_direntry_t* new_entry = NULL;
 	ospfs_inode_t* file_oi = NULL;
+	int jj;
 	
 	//Name too large
 	if(dentry->d_name.len > OSPFS_MAXNAMELEN){
@@ -1185,7 +1183,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	file_oi->oi_indirect = 0;
 	file_oi->oi_indirect2 = 0;
 	//initialize directs 
-	int jj;
+	
 	for(jj = 0; jj < OSPFS_NDIRECT; jj++){
 	  file_oi->oi_direct[jj] = 0;
 	}
@@ -1197,7 +1195,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	memcpy(new_entry->od_name, dentry->d_name.name, dentry->d_name.len);
 	
 	//last character as the zero byte
-	new_entry->od_name[d_name.len] = 0;
+	new_entry->od_name[dentry->d_name.len] = 0;
 	
 	// END OF OUR CODE
 	
@@ -1218,19 +1216,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 }
 
 
-static uint32_t find_free_inode(){
-  //Used to find a free inode for above create function
-  //Returns the inode iterator
-  int jj;
 
-  for(jj = ospfs_super->os_firstinob; jj < ospfs_super->os_ninodes; jj++){
-    ospfs_inode_t* oi = ospfs_inode(jj);
-    if(oi->oi_nlink == 0){
-      return jj; // inode found
-    }
-  }
-  return 0; // no inode found
-}
 
 // ospfs_symlink(dirino, dentry, symname)
 //   Linux calls this function to create a symbolic link.
