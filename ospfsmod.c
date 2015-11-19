@@ -734,7 +734,25 @@ add_block(ospfs_inode_t *oi)
 	uint32_t *allocated[2] = { 0, 0 };
 
 	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+	if (n == OSPFS_MAXFILEBLKS)
+		return -ENOSPC;
+	int32_t indirect_i = indir_index(n);
+	int32_t indirect2_i = indir2_index(n);
+	
+	uint32_t dataBlock;
+
+	if (indir_i == -1) {
+		int32_t direct_i = dir_index(n);
+		//if (oi->oi_direct[direct_i] != 0)
+			//return -EIO;
+		data_block = allocate_block();
+		if (data_block == 0)
+			return -ENOSPC;
+		memset(ospfs_block(data_block), 0, OSPFS_BLKSIZE);
+		
+	}
+
+	//return -EIO; // Replace this line
 }
 
 
