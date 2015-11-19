@@ -542,6 +542,20 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 
 	od->od_ino = 0;
 	oi->oi_nlink--;
+	
+	//OUR CODE
+	
+	//Deleting symbolic links should work correctly
+	
+	//Key: symlink has no direct/indirect data pointers, do not resize it
+	//	But we should resize file if it is a directory or a regular file
+	
+	if(oi->oi_ftype != OSPFS_FTYPE_SYMLINK && oi->oi_nlink == 0){
+	  change_size(oi, 0);
+	}
+
+	// END OUR CODE
+	
 	return 0;
 }
 
@@ -1183,7 +1197,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	}
 	
 	dir_oi->oi_size = new_size;
-	return ospfs_inode_data(dir_oi, offseet + OSPFS_DIRENTRY_SIZE);
+	return ospfs_inode_data(dir_oi, offset + OSPFS_DIRENTRY_SIZE);
 	
 	// END OF OUR CODE
 	
@@ -1224,7 +1238,57 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+	
+	//OUR CODE
+	
+	//making hard links: should be similar to create file
+	//note: you do NOT need a new inode, it shares same inode with old file
+	
+	
+	ospfs_inode_t* dir_oi = ospfs_inode(dir->i_ino);
+	ospfs_inode_t* inc_ino = NULL;
+	ospfs_direntry_t* new_entry = NULL;
+	
+	//io check
+	if(!dir_oi){
+	  return -EIO;
+	}
+	
+	//check name of dest
+	if(dst_dentry->d_name.len > OSPFS_MAXNAMELEN){
+	  return -ENAMETOOLONG;
+	}
+	
+	//check duplicates of dest
+	if(find_direntry(dir_oi, dst_dentry->d_name.name, dst_dentry->d_name.len)){
+	  return -EEXIST;
+	}
+	
+	//get a direntry in dir
+	new_entry = create_blank_direntry(dir_oi);
+	if(IS_ERR(new_entry)){
+	  return PTR_ERR(new_entry);
+	}
+	
+	//set inodes using source
+	new_entry->od_ino = src_dentry->d_inode->i_ino;
+	
+	//copy name WITH zero byte
+	memcpy(new_entry->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
+	new_entry->od_name[dst_dentry->d_name.len] = 0;
+	
+	//increment nlink value using source
+	inc_ino = ospfs_inode(src_dentry->d_inode->i_ino);
+	if(!inc_ino){
+	  return -EIO;
+	}
+	inc_ino->oi_nlink++;
+	
+	return 0;
+	
+	// END OF OUR CODE
+	
+	//return -EINVAL;
 }
 
 static uint32_t 
@@ -1281,6 +1345,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	
 	
 	//OUR CODE
+	
 	
 	//uint32_t bloc_ino = 0;
 	ospfs_direntry_t* new_entry = NULL;
@@ -1385,7 +1450,32 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	uint32_t entry_ino = 0;
 
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+	
+	//OUR CODE
+	//should share lots of similarities with hard links
+	
+	//io check
+	if(!dir_oi){
+	  return -EIO;
+	}
+	
+	//name check
+	
+	
+	//duplicate check
+	
+	//find free inode
+	
+	//initialize inode as symlink
+	
+	//
+	
+	
+	// END CODE
+	
+	
+	
+	//return -EINVAL;
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
