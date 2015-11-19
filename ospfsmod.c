@@ -1062,7 +1062,37 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    entries and return one of them.
 
 	/* EXERCISE: Your code here. */
-	return ERR_PTR(-EINVAL); // Replace this line
+	
+	//OUR CODE
+	ospfs_direntry_t* od;
+	int retval;
+	int offset;
+	
+	//1. Check for existing directory and return if found
+	for(offset = 0; offset < dir_oi->oi_size; offset += OSPFS_DIRENTRY_SIZE){
+	  od = ospfs_inode_data(dir_oi, offset);
+	  if(od->od_ino == 0){
+	    return od;
+	  }
+	}
+	
+	//2. If no empty entries, add a block (zeroed out blocks)
+	//   Use ERR_PTR if this fails
+	int new_size = (ospfs_size2nblocks(dir_oi->oi_size) + 1) * OSPFS_BLKSIZE;
+	retval = change_size(dir_oi, new_size);
+	
+	if(retval != 0){
+	  return ERR_PTR(retval);
+	}
+	
+	dir_oi->oi_size = new_size;
+	return ospfs_inode_data(dir_oi, offseet + OSPFS_DIRENTRY_SIZE);
+	
+	// END OF OUR CODE
+	
+	
+	
+	//return ERR_PTR(-EINVAL); // Replace this line
 }
 
 // ospfs_link(src_dentry, dir, dst_dentry
@@ -1109,6 +1139,7 @@ find_free_inode(){
   for(jj = ospfs_super->os_firstinob; jj < ospfs_super->os_ninodes; jj++){
     ospfs_inode_t* oi = ospfs_inode(jj);
     if(oi->oi_nlink == 0){
+      //Note: determine if an inode is free by checking its hard link count
       return jj; // inode found
     }
   }
@@ -1153,11 +1184,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	
 	
 	//OUR CODE
-	//provided with 
-	//dir_oi
-	//entry_ino 
-	//already
-	//ospfs_inode() is a provided function
+	
 	//uint32_t bloc_ino = 0;
 	ospfs_direntry_t* new_entry = NULL;
 	ospfs_inode_t* file_oi = NULL;
