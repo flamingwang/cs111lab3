@@ -1357,27 +1357,62 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	//OUR CODE
 	//should share lots of similarities with hard links
 	
+	ospfs_direntry_t* new_entry = NULL;
+	ospfs_symlink_inode_t* sfile_oi = NULL;//symlink;
+	
 	//io check
 	if(!dir_oi){
 	  return -EIO;
 	}
 	
-	//name check
+	//name check on dest
+	if(dentry->d_name.len > OSPFS_MAXNAMELEN){
+	  return -ENAMETOOLONG;
+	}
 	
+	//duplicate check on dest
+	if(find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len)){
+	  return -EEXIST;
+	}
 	
-	//duplicate check
+	//find free inode (call it entry_ino) and check it
+	entry_ino = find_free_inode();
+	if(entry_ino == 0){
+	  return -ENOSPC;
+	}
 	
-	//find free inode
+	//make inode into a symlink inode
+	sfile_oi = (ospfs_symlink_inode_t*) ospfs_inode(entry_ino);
+	if(sfile_oi == NULL){
+	  return PTR_ERR(sfile_oi);
+	}
 	
-	//initialize inode as symlink
+	//create a direntry and direntry check
+	new_entry = create_blank_direntry(dir_oi);
+	if(IS_ERR(new_entry)){
+	  return PTR_ERR(new_entry);
+	}
+
+	//symlink name check
+	if(strlen(symname) > OSPFS_MAXSYMLINKLEN){
+	  return -ENAMETOOLONG;
+	}
 	
-	//
+	//Initialize inode
+	sfile_oi->oi_size = strlen(symname);
+	sfile_oi->oi_ftype = OSPFS_FTYPE_SYMLINK;
+	sfile_oi->oi_nlink = 1;
+	memcpy(sfile_oi->oi_symlink, symname, sfile_oi->oi_size);
+	sfile_oi->oi_symlink[strlen(symname)] = 0;
+
+	//fill in direntry
+	new_entry->od_ino = entry_ino;
+	memcpy(new_entry->od_name, dentry->d_name.name, dentry->d_name.len);
+	new_entry->od_name[dentry->d_name.len] = 0;
+
 	
-	
-	// END CODE
-	
-	
-	
+	// END OUR CODE
+
 	//return -EINVAL;
 
 	/* Execute this code after your function has successfully created the
@@ -1412,6 +1447,12 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 	ospfs_symlink_inode_t *oi =
 		(ospfs_symlink_inode_t *) ospfs_inode(dentry->d_inode->i_ino);
 	// Exercise: Your code here.
+	
+	//OUR CODE
+	
+	// END OUR CODE
+	
+	
 
 	nd_set_link(nd, oi->oi_symlink);
 	return (void *) 0;
