@@ -878,7 +878,61 @@ remove_block(ospfs_inode_t *oi)
 	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 
 	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+	/*if (n == 0)
+		return -EIO;*/
+	uint32_t last_block_i = n -1;
+	uint32_t* indirect_data;
+	uint32_t* indirect2_data;
+
+	int32_t indirect_i = indir_index(last_block_i);
+	int32_t indirect2_i = indir2_index(last_block_i);
+	if (indirect_i == 0) {
+
+		free_block(indirect_data[indirect_i]);
+
+		indirect_data[indirect_i] = 0;
+
+		//TODO:should this be in here?
+		if (n == OSPFS_NDIRECT + 1) {
+			free_block(oi->oi_indirect);
+			oi->oi_indirect = 0;
+		}
+	}
+	else if (indirect_i == -1) {
+		int32_t direct_i = direct_index(last_block_i);
+		free_block(oi->oi_direct[direct_i]);
+		oi->oi_direct[direct_i] = 0;
+	}
+	else {
+		free_block(indirect_data[indirect_i]);
+		indirect_data[indirect_i] = 0;
+		if (indirect_i == 0) {
+			free_block(indirect2_data[indirect2_i]);
+			indirect2_data[indirect2_i] = 0;
+			if (indirect2_i == 0) {
+				free_block(oi->oi_indirect2);
+				oi->oi_indirect2 = 0;
+			}
+		}
+	}
+
+	oi->oi_size = OSPFS_BLKSIZE * (n-1);
+	return 0;
+
+
+	/*if (indir2_index(n) == -1) {
+		if (indir_index(n) == -1) {
+			free_block(oi->oi_direct[n]);
+			oi->oi_direct[n] = 0;
+		}
+		else { //indir_index(n) == 0
+			if (oi->oi_indirect <= 0)
+				return -EIO;
+		}
+	}*/
+
+
+	//return -EIO; // Replace this line
 }
 
 
