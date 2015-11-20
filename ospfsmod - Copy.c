@@ -895,7 +895,7 @@ remove_block(ospfs_inode_t *oi)
 		indirect_data[indirect_i] = 0;
 
 		//TODO:should this be in here?
-		if (n == OSPFS_NDIRECT + 1) {
+		if (indirect_i == 0) {
 			free_block(oi->oi_indirect);
 			oi->oi_indirect = 0;
 		}
