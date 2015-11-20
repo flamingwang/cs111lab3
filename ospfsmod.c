@@ -589,7 +589,8 @@ allocate_block(void)
 {
 	/* EXERCISE: Your code here */
 	void* bm = ospfs_block(OSPFS_FREEMAP_BLK);
-	int i;
+	int i;//can actually start at 2 because first 2 blocks are boot and super
+	//see free_block
 	for (i = 1; i < ospfs_super->os_nblocks; i++) {
 		if (bitvector_test(bm, i) == 1) {
 			bitvector_clear(bm, i);
@@ -615,6 +616,7 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
+	//boot sector, superblock, free-block bitmap must never be freed
 	if (blockno > ospfs_super->os_firstinob) {
 		void* bm = ospfs_block(OSPFS_FREEMAP_BLK);
 		bitvector_set(bm, blockno);
@@ -1124,10 +1126,27 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
 	/* EXERCISE: Your code here */
+	
+	//OUR CODE
+	if(filp->f_flags & O_APPEND){
+	  *f_pos = oi->oi_size;
+	}
+	// END OUR CODE
 
 	// If the user is writing past the end of the file, change the file's
 	// size to accomodate the request.  (Use change_size().)
 	/* EXERCISE: Your code here */
+	
+	//OUR CODE
+	//change size if necessary, don't let it overflow
+	if( (*f_pos) + count >= oi->oi_size){
+	  retval = change_size(oi, ((*f_pos) + count));
+	  if(retval != 0){
+	    return retval;
+	  }
+	}
+	// END OUR CODE
+	
 
 	// Copy data block by block
 	while (amount < count && retval >= 0) {
@@ -1147,8 +1166,33 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		// read user space.
 		// Keep track of the number of bytes moved in 'n'.
 		/* EXERCISE: Your code here */
-		retval = -EIO; // Replace these lines
-		goto done;
+		
+		//OUR CODE
+		
+		//block offset
+		uint32_t block_offset = *f_pos % OSPFS_BLKSIZE;
+		
+		//how much to write to block, tracked in 'n'
+		if( (count-amount) > (OSPFS_BLKSIZE - block_offset) ){
+		  //more bytes than this block can take
+		  n = OSPFS_BLKSIZE - block_offset;
+		}
+		else{n = count - amount;
+		  //block can handle all the remaining bytes
+		  n = count - amount;
+		}
+		
+		
+		//copy from userspace and -EFAULT if fails
+		if(copy_from_user(data + block_offset, buffer, n) != 0){
+		  return -EFAULT;
+		}
+		
+		// END OUR CODE
+		
+		
+		//retval = -EIO; // Replace these lines
+		//goto done;
 
 		buffer += n;
 		amount += n;
