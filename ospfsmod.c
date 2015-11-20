@@ -1277,7 +1277,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	int retval;
 	int offset;
 	
-	//1. Check for existing directory and return if found
+	//1. Check for existing directory entry and return if found
 	for(offset = 0; offset < dir_oi->oi_size; offset += OSPFS_DIRENTRY_SIZE){
 	  od = ospfs_inode_data(dir_oi, offset);
 	  if(od->od_ino == 0){
@@ -1295,7 +1295,10 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	}
 	
 	dir_oi->oi_size = new_size;
+	
 	return ospfs_inode_data(dir_oi, offset + OSPFS_DIRENTRY_SIZE);
+	//return ospfs_inode_data(dir_oi, offset);
+	
 	
 	// END OF OUR CODE
 	
@@ -1393,10 +1396,11 @@ static uint32_t
 find_free_inode(){
   //Used to find a free inode for above create function
   //Returns the inode iterator
-  int jj;
+  uint32_t jj;
+  ospfs_inode_t* oi;
 
   for(jj = ospfs_super->os_firstinob; jj < ospfs_super->os_ninodes; jj++){
-    ospfs_inode_t* oi = ospfs_inode(jj);
+    oi = ospfs_inode(jj);
     if(oi->oi_nlink == 0){
       //Note: determine if an inode is free by checking its hard link count
       return jj; // inode found
@@ -1475,9 +1479,9 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 	
 	file_oi = ospfs_inode(entry_ino);
-	if(file_oi == NULL){
+	if(!file_oi){
 	  //would have segfaulted in find_free_inode() already 
-	  return PTR_ERR(file_oi);
+	  return -EIO;
 	}
 	
 	//Initialize inode
@@ -1485,8 +1489,8 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	file_oi->oi_ftype = OSPFS_FTYPE_REG;
 	file_oi->oi_nlink = 1;
 	file_oi->oi_mode = mode;
-	file_oi->oi_indirect = 0;
-	file_oi->oi_indirect2 = 0;
+	//file_oi->oi_indirect = 0;
+	//file_oi->oi_indirect2 = 0;
 	//initialize directs 
 	for(jj = 0; jj < OSPFS_NDIRECT; jj++){
 	  file_oi->oi_direct[jj] = 0;
