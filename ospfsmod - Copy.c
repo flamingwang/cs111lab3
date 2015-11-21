@@ -889,7 +889,8 @@ remove_block(ospfs_inode_t *oi)
 	int32_t indirect_i = indir_index(last_block_i);
 	int32_t indirect2_i = indir2_index(last_block_i);
 	if (indirect_i == 0) {
-
+		if (!(indirect_data = ospfs_block(oi->oi_indirect)))
+		        return -EIO;
 		free_block(indirect_data[indirect_i]);
 
 		indirect_data[indirect_i] = 0;
@@ -906,6 +907,11 @@ remove_block(ospfs_inode_t *oi)
 		oi->oi_direct[direct_i] = 0;
 	}
 	else {
+		if (!(indirect2_data = ospfs_block(oi->oi_indirect2)))
+        	return -EIO;
+        if (!(indirect_data = ospfs_block(indirect2_data[indirect2_index])))
+        return -EIO;
+    
 		free_block(indirect_data[indirect_i]);
 		indirect_data[indirect_i] = 0;
 		if (indirect_i == 0) {
