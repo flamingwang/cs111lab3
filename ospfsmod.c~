@@ -792,7 +792,7 @@ add_block(ospfs_inode_t *oi)
 		if (data_block == 0) {
 			//enospc
 			if (allocated[0]) {
-					free_block((uint32_t)allocated[0]);
+					free_block(allocated[0]);
 					oi->oi_indirect = 0;
 				}
 		}
@@ -803,7 +803,7 @@ add_block(ospfs_inode_t *oi)
 	}
 	else {
 		if (oi->oi_indirect2 == 0) {
-			allocated[1] = (uint32_t*) allocate_block();
+			allocated[1] = allocate_block();
 			if (allocated[1] == 0) {
 				/*if (allocated[0]) {
 					free_block(allocated[0]);
@@ -811,19 +811,19 @@ add_block(ospfs_inode_t *oi)
 				}*/
 				return -ENOSPC;
 			}
-			oi->oi_indirect2 = (uint32_t)allocated[1];
+			oi->oi_indirect2 = allocated[1];
 			memset(ospfs_block(oi->oi_indirect2), 0, OSPFS_BLKSIZE);
 		}
 		uint32_t* indirect2_data = ospfs_block(oi->oi_indirect2);
 		if (indirect2_data[indirect2_i] == 0) {
-			allocated[0] = (uint32_t*) allocate_block();
+			allocated[0] = allocate_block();
 			if (allocated[0] == 0) { //enospc
 				if (allocated[1]) {
-					free_block((uint32_t)allocated[1]);
+					free_block(allocated[1]);
 					oi->oi_indirect2 = 0;
 				}
 			}
-			oi->oi_indirect = (uint32_t)allocated[0];
+			oi->oi_indirect = allocated[0];
 			memset(ospfs_block(oi->oi_indirect), 0, OSPFS_BLKSIZE);
 		}
 		uint32_t* indirect_data = ospfs_block(oi->oi_indirect);
@@ -832,11 +832,11 @@ add_block(ospfs_inode_t *oi)
 		data_block = allocate_block();
 		if (data_block == 0) {
 			if (allocated[0]) {
-					free_block((uint32_t)allocated[0]);
+					free_block(allocated[0]);
 					oi->oi_indirect = 0;
 				}
 			if (allocated[1]) {
-				free_block((uint32_t)allocated[1]);
+				free_block(allocated[1]);
 				oi->oi_indirect2 = 0;	
 			}
 			return -ENOSPC;
@@ -1406,7 +1406,7 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 }
 
 static uint32_t 
-find_free_inode(void){
+find_free_inode(){
   //Used to find a free inode for above create function
   //Returns the inode iterator
   uint32_t jj;
@@ -1451,6 +1451,25 @@ find_free_inode(void){
 //
 //   EXERCISE: Complete this function.
 
+static inline uint32_t
+get_free_inode(void)
+{
+	uint32_t inode_no;
+	ospfs_inode_t *new_inode_loc;
+
+	// Find free inode
+	for (inode_no = 2; inode_no < ospfs_super->os_ninodes; ++inode_no)
+	{
+		new_inode_loc = ospfs_inode(inode_no);
+
+		if (new_inode_loc->oi_nlink == 0)
+			return inode_no;
+	}
+
+	// No free inodes
+	return 0;
+}
+
 static int
 ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
 {
@@ -1468,7 +1487,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	if(IS_ERR(od))
 		return PTR_ERR(od);
 
-	entry_ino = find_free_inode();
+	entry_ino = get_free_inode();
 	if(entry_ino == 0) return -ENOSPC;
 
 	ospfs_inode_t *oi = ospfs_inode(entry_ino);
@@ -1484,11 +1503,9 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	oi->oi_ftype = OSPFS_FTYPE_REG;
 	oi->oi_nlink = 1;
 	oi->oi_mode = mode;
-	oi->oi_indirect = 0;
-	oi->oi_indirect2 = 0;
-	int jj;
-	for (jj = 0; jj < OSPFS_NDIRECT; jj++)
-		oi->oi_direct[jj] = 0;
+	int j;
+	for (j = 0; j < OSPFS_NDIRECT; ++j)
+		oi->oi_direct[j] = 0;
 	
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before

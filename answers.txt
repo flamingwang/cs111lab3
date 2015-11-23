@@ -11,16 +11,20 @@
 # information you'd like us to know, please add it at the end of the file.
 
 # Partner 1
-Name: 
-Student ID: 
-Email: 
+Name: Sean Wang
+Student ID: 604151638
+Email: seanwang22@ucla.edu
 
 # Partner 2 (if you're working in a team)
-Name: 
-Student ID: 
-Email: 
+Name: Dennis Gahm
+Student ID: 704016107
+Email: dennisgahm@gmail.com
 
 # Extra credit problems
 #Extra credit problem: none
 
 # Add any other information you'd like us to know below this line.
+
+-Compilation complains about mixed declarations and code but this is unavoidable.
+
+-Passes all 17 test cases.
